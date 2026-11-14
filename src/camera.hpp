@@ -14,7 +14,8 @@ struct FlyCamera {
     glm::vec3 pos{0.f, 25.f, -70.f};
     float yaw = 0.f, pitch = -0.15f;
     glm::mat4 view() const;
-    void update(const InputState& in, float dt);
+    // t = simulation time: the camera is kept above the wave surface at its position.
+    void update(const InputState& in, float dt, float t);
 };
 
 glm::vec2 clampToDeck(glm::vec2 local, const DeckOutline& o, float margin = 0.4f);

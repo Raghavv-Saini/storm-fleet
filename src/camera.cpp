@@ -1,4 +1,5 @@
 #include "camera.hpp"
+#include "ocean_core.hpp"
 #include <glm/gtc/matrix_transform.hpp>
 #include <cmath>
 
@@ -17,7 +18,7 @@ glm::mat4 FlyCamera::view() const {
     return glm::lookAt(pos, pos + lookDir(yaw, pitch), glm::vec3(0, 1, 0));
 }
 
-void FlyCamera::update(const InputState& in, float dt) {
+void FlyCamera::update(const InputState& in, float dt, float t) {
     applyMouse(yaw, pitch, in);
     glm::vec3 f = lookDir(yaw, pitch);
     glm::vec3 r = glm::normalize(glm::cross(f, glm::vec3(0, 1, 0)));
@@ -29,7 +30,8 @@ void FlyCamera::update(const InputState& in, float dt) {
     if (in.up) v.y += 1.f;
     if (in.down) v.y -= 1.f;
     if (glm::length(v) > 0.f) pos += glm::normalize(v) * (in.fast ? 60.f : 15.f) * dt;
-    pos.y = glm::clamp(pos.y, 2.0f, 600.f);
+    // wave crests reach ~3.3 m, so a fixed floor would let the camera dip under the sea surface
+    pos.y = glm::clamp(pos.y, waveHeight({pos.x, pos.z}, t) + 2.0f, 600.f);
 }
 
 glm::vec2 clampToDeck(glm::vec2 local, const DeckOutline& o, float margin) {

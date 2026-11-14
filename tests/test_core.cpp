@@ -94,6 +94,19 @@ TEST(clamp_handles_tapered_bow) {
     }
 }
 
+TEST(fly_camera_stays_above_waves) {
+    FlyCamera c;
+    c.pos = {10.f, 20.f, 10.f};
+    c.pitch = -1.2f;
+    InputState in;
+    in.down = true; in.w = true; in.fast = true;
+    float t = 5.f;
+    for (int i = 0; i < 600; ++i) {          // 10 s of holding "down + forward" at 60 fps
+        c.update(in, 1.f / 60.f, t);
+        t += 1.f / 60.f;
+        CHECK(c.pos.y >= waveHeight({c.pos.x, c.pos.z}, t) + 1.5f);
+    }
+}
 TEST(obstacle_pushes_out_of_mast) {
     DeckOutline o = testOutline();
     CHECK(o.obstacles.size() >= 6);  // 3 masts + capstan + hatches + guns...

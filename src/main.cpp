@@ -302,7 +302,6 @@ void Game::render(const glm::mat4& view, glm::vec3 camPos, GLuint targetFbo) {
 
     glActiveTexture(GL_TEXTURE0); glBindTexture(GL_TEXTURE_2D, woodTex);
     glActiveTexture(GL_TEXTURE1); glBindTexture(GL_TEXTURE_2D, canvasTex);
-    glActiveTexture(GL_TEXTURE2); glBindTexture(GL_TEXTURE_2D, renderer.shadowTex());
     glActiveTexture(GL_TEXTURE0);
 
     auto drawShips = [&](int shadowPass) {
@@ -497,7 +496,7 @@ int main(int argc, char** argv) {
                 while (rem > 0.f) { float s = std::min(rem, 1.f / 30.f); game.step(s); rem -= s; }
 
                 if (game.scene == 1) game.deck.update(game.in, dt, game.fleet[0].mesh.outline);
-                else game.fly.update(game.in, dt);
+                else game.fly.update(game.in, dt, game.t);
                 game.in.mouseDx = game.in.mouseDy = 0.f;
 
                 glm::vec3 camPos;
