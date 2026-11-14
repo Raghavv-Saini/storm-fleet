@@ -3,8 +3,8 @@
 #include <vector>
 
 void Ocean::init() {
-    const int N = 256;  // cells per axis
-    const float a = 64.f, b = 2436.f;  // x = a*u + b*u^3, u in [-1,1]  -> 0.5 m spacing at the centre, 2.5 km at the edge
+    const int N = 384;  // cells per axis
+    const float a = 96.f, b = 2400.f;  // x = a*u + b*u^3, u in [-1,1]  -> 0.5 m spacing at the centre, 2.5 km at the edge
     std::vector<float> verts;
     verts.reserve((N + 1) * (N + 1) * 3);
     for (int j = 0; j <= N; ++j) {

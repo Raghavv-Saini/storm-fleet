@@ -9,7 +9,11 @@ static Wave mk(float angleDeg, float wavelength, float steep) {
     w.dir = glm::vec2(std::cos(a), std::sin(a));
     w.wavelength = wavelength;
     w.amplitude = wavelength / 45.0f;
-    w.speed = std::sqrt(9.81f / k);  // deep-water dispersion
+    // Deep-water dispersion gives the natural period; nudge it (<1%) so a whole number of cycles
+    // fits in the 3600 s clock wrap and the sea does not jump when the clock restarts.
+    float naturalPeriod = 2.0f * 3.14159265f / std::sqrt(9.81f * k);
+    float cycles = std::fmax(1.0f, std::round(3600.0f / naturalPeriod));
+    w.speed = wavelength * cycles / 3600.0f;
     w.steepness = steep;
     return w;
 }

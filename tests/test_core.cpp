@@ -52,6 +52,15 @@ TEST(wave_large_time_ok) {
     CHECK(std::isfinite(h));
     CHECK(std::fabs(h) <= ampSum() + 1e-3f);
 }
+TEST(wave_seamless_at_time_wrap) {
+    // wrapTime() restarts the clock every 3600 s; the sea must look identical on both sides of the restart
+    for (int i = 0; i < 200; ++i) {
+        glm::vec2 p(i * 5.3f - 500.f, i * -3.1f + 80.f);
+        // 2 ms before the restart vs the restart itself: only real motion (<5 m/s) may separate them
+        CHECK(std::fabs(waveHeight(p, 3599.998f) - waveHeight(p, 0.f)) < 0.02f);
+        CHECK(std::fabs(waveHeight(p, 3600.f) - waveHeight(p, 0.f)) < 1e-4f);
+    }
+}
 TEST(wave_height_inverts_horizontal_displacement) {
     // The displaced point found by waveSample must land (horizontally) on the query xz.
     for (int i = 0; i < 100; ++i) {

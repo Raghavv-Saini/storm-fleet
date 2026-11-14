@@ -1,5 +1,6 @@
 #include "gl_util.hpp"
 #include <cstdio>
+#include <filesystem>
 #include <fstream>
 #include <sstream>
 #include <stdexcept>
@@ -8,24 +9,26 @@
 #include <windows.h>
 #endif
 
-std::string shaderDir() {
-    static std::string dir;
+// Directory with the shaders, next to the executable (not the working directory). Kept as a
+// filesystem::path so install folders with non-ASCII names, common in user profiles, still work.
+static std::filesystem::path shaderPath() {
+    static std::filesystem::path dir;
     if (dir.empty()) {
 #ifdef _WIN32
-        char buf[MAX_PATH];
-        GetModuleFileNameA(nullptr, buf, MAX_PATH);
-        std::string p(buf);
-        dir = p.substr(0, p.find_last_of("\\/") + 1) + "shaders/";
+        static wchar_t buf[32768];
+        DWORD n = GetModuleFileNameW(nullptr, buf, 32768);
+        dir = std::filesystem::path(std::wstring(buf, n)).parent_path() / "shaders";
 #else
-        dir = "shaders/";
+        dir = "shaders";
 #endif
     }
     return dir;
 }
+std::string shaderDir() { return shaderPath().string() + "/"; }
 
-static std::string readFile(const std::string& path) {
+static std::string readFile(const std::filesystem::path& path) {
     std::ifstream f(path);
-    if (!f) throw std::runtime_error("cannot open " + path);
+    if (!f) throw std::runtime_error("cannot open " + path.string());
     std::stringstream ss;
     ss << f.rdbuf();
     return ss.str();
@@ -38,7 +41,7 @@ static std::string expandIncludes(const std::string& src) {
         auto p = line.find("#include \"");
         if (p != std::string::npos) {
             auto q = line.find('"', p + 10);
-            out << readFile(shaderDir() + line.substr(p + 10, q - p - 10)) << "\n";
+            out << readFile(shaderPath() / line.substr(p + 10, q - p - 10)) << "\n";
         } else {
             out << line << "\n";
         }
@@ -62,8 +65,8 @@ static GLuint compile(GLenum type, const std::string& src, const std::string& na
 }
 
 Shader Shader::load(const std::string& vs, const std::string& fs) {
-    std::string vsrc = expandIncludes(readFile(shaderDir() + vs));
-    std::string fsrc = expandIncludes(readFile(shaderDir() + fs));
+    std::string vsrc = expandIncludes(readFile(shaderPath() / vs));
+    std::string fsrc = expandIncludes(readFile(shaderPath() / fs));
     GLuint v = compile(GL_VERTEX_SHADER, vsrc, vs), f = compile(GL_FRAGMENT_SHADER, fsrc, fs);
     Shader sh;
     sh.id = glCreateProgram();

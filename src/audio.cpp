@@ -10,6 +10,7 @@
 #include "miniaudio.h"
 
 #include <algorithm>
+#include <atomic>
 #include <cmath>
 #include <cstdint>
 #include <mutex>
@@ -20,7 +21,8 @@ namespace audio {
 namespace {
 constexpr int kRate = 44100;
 ma_device g_dev;
-bool g_ok = false, g_muted = false;
+bool g_ok = false;
+std::atomic<bool> g_muted{false};
 std::mutex g_mx;
 
 struct Voice { const std::vector<float>* buf; size_t pos; float gain; long delay; };

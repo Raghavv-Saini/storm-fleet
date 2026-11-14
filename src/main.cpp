@@ -79,6 +79,7 @@ struct Game {
     int scene = 1;
 
     float t = 0.f;
+    double clock = 0.0;      // accumulated in double so tiny steps never round away in long sessions
     glm::vec2 fleetCenter{0.f};
     float struckLag = 0.f;
     bool struckDone = false;
@@ -104,11 +105,11 @@ Game* G = nullptr;
 struct ShipDef { glm::vec2 offset; float length, beam; glm::vec3 hull, trim, sail; float headingBias; };
 const ShipDef kDefs[6] = {
     {{0.f, 0.f},      34.f, 9.0f, {0.10f, 0.075f, 0.06f}, {0.55f, 0.38f, 0.12f}, {0.78f, 0.72f, 0.60f}, 0.00f},
-    {{-62.f, 40.f},   30.f, 8.0f, {0.07f, 0.08f, 0.10f},  {0.60f, 0.45f, 0.15f}, {0.72f, 0.70f, 0.64f}, 0.10f},
-    {{58.f, 78.f},    38.f, 9.8f, {0.12f, 0.05f, 0.04f},  {0.50f, 0.34f, 0.10f}, {0.80f, 0.74f, 0.62f}, -0.08f},
-    {{-22.f, 118.f},  36.f, 9.4f, {0.09f, 0.07f, 0.05f},  {0.58f, 0.40f, 0.12f}, {0.82f, 0.76f, 0.64f}, 0.05f},
-    {{84.f, 8.f},     28.f, 7.6f, {0.06f, 0.07f, 0.06f},  {0.45f, 0.36f, 0.14f}, {0.70f, 0.68f, 0.60f}, -0.14f},
-    {{-96.f, -34.f},  32.f, 8.6f, {0.11f, 0.09f, 0.07f},  {0.52f, 0.30f, 0.10f}, {0.76f, 0.72f, 0.62f}, 0.12f},
+    {{-62.f, 40.f},   30.f, 8.0f, {0.07f, 0.08f, 0.10f},  {0.60f, 0.45f, 0.15f}, {0.72f, 0.70f, 0.64f}, 0.04f},
+    {{58.f, 78.f},    38.f, 9.8f, {0.12f, 0.05f, 0.04f},  {0.50f, 0.34f, 0.10f}, {0.80f, 0.74f, 0.62f}, -0.03f},
+    {{-22.f, 118.f},  36.f, 9.4f, {0.09f, 0.07f, 0.05f},  {0.58f, 0.40f, 0.12f}, {0.82f, 0.76f, 0.64f}, 0.02f},
+    {{84.f, 8.f},     28.f, 7.6f, {0.06f, 0.07f, 0.06f},  {0.45f, 0.36f, 0.14f}, {0.70f, 0.68f, 0.60f}, -0.05f},
+    {{-96.f, -34.f},  32.f, 8.6f, {0.11f, 0.09f, 0.07f},  {0.52f, 0.30f, 0.10f}, {0.76f, 0.72f, 0.62f}, 0.05f},
 };
 
 void Game::initWorld() {
@@ -204,7 +205,8 @@ void Game::emitFire(float dt) {
 }
 
 void Game::step(float dt) {
-    t += dt;
+    clock += dt;
+    t = (float)clock;
     fleetCenter.y += kFleetSpeed * dt;
 
     // The struck ship loses way after the strike and falls behind the fleet.
@@ -334,6 +336,23 @@ void Game::render(const glm::mat4& view, glm::vec3 camPos, GLuint targetFbo) {
     sky.draw(glm::inverse(f.viewProj));
 
     glDisable(GL_CULL_FACE);
+    {   // feed the ships to the water shader so it can draw hull foam, wakes and the sinking whirlpool
+        glm::vec4 A[6], B[6];
+        for (int i = 0; i < 6; ++i) {
+            const FleetShip& s = fleet[i];
+            float churn = 0.f, speed = s.st.speed / kFleetSpeed;
+            if (i == kStruck) {
+                float sp = s.st.sinkProgress;
+                float sinceSunk = t - (event.t0 + StrikeEvent::kSinkEnd);
+                churn = glm::smoothstep(0.03f, 0.4f, sp) * (1.f - glm::smoothstep(0.f, 30.f, sinceSunk));
+            }
+            A[i] = glm::vec4(s.st.xz.x, s.st.xz.y, s.st.heading, s.mesh.params.length);
+            B[i] = glm::vec4(s.mesh.params.beam, churn, speed, 0.f);
+        }
+        oceanSh.use();
+        oceanSh.setArr("uShipA", A, 6);
+        oceanSh.setArr("uShipB", B, 6);
+    }
     ocean.draw(oceanSh, camPos, detailTex);
     glActiveTexture(GL_TEXTURE0); glBindTexture(GL_TEXTURE_2D, woodTex);
     glActiveTexture(GL_TEXTURE1); glBindTexture(GL_TEXTURE_2D, canvasTex);
@@ -490,6 +509,13 @@ int main(int argc, char** argv) {
                     if (now - startT > args.bench) { std::printf("bench: %d frames in %.1fs = %.1f fps avg, worst frame %.1f ms\n", totalFrames, now - startT, totalFrames / (now - startT), worst * 1000.0); break; }
                 }
                 glfwPollEvents();
+                int cw, ch;
+                glfwGetFramebufferSize(win, &cw, &ch);
+                if (cw == 0 || ch == 0) {   // minimised: sleep until something happens instead of burning the GPU
+                    glfwWaitEvents();
+                    last = glfwGetTime();
+                    continue;
+                }
 
                 // fixed small steps keep particle and wave logic stable at any frame rate
                 float rem = dt;
