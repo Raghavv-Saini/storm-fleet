@@ -310,6 +310,7 @@ GalleonGeometry buildGalleonGeometry(const GalleonParams& P) {
         float deckY = H.deckHeight(M.z);
         glm::vec3 base(0, deckY - 0.2f, M.z), top(0, deckY + M.height, M.z);
         mastTops[mi] = top;
+        G.outline.obstacles.push_back({0.f, M.z, 0.85f});
         cylinder(G.wood, base, top, 0.38f, 0.16f, 12, woodC, MAT_WOOD);
         // fighting top platform
         float topY = deckY + M.height * 0.56f;
@@ -453,17 +454,22 @@ GalleonGeometry buildGalleonGeometry(const GalleonParams& P) {
             glm::vec3 d(std::cos(a), std::sin(a), 0);
             cylinder(G.wood, c, c + d * 1.0f, 0.04f, 0.035f, 6, woodC * 1.2f, MAT_WOOD);
         }
+        G.outline.obstacles.push_back({0.f, wz - 0.3f, 0.55f});   // wheel stand
+        G.outline.obstacles.push_back({0.f, wz + 1.2f, 0.6f});    // binnacle
         // binnacle
         box(G.wood, {0, wy + 0.55f, wz + 1.2f}, {0.3f, 0.55f, 0.3f}, darkWood, MAT_WOOD);
         // hatches with gratings
         for (float hz : {-0.12f * L, 0.12f * L}) {
             float hy = H.deckHeight(hz);
             box(G.wood, {0, hy + 0.2f, hz}, {1.1f, 0.2f, 1.5f}, darkWood, MAT_WOOD);
+            G.outline.obstacles.push_back({0.f, hz - 0.85f, 1.25f});
+            G.outline.obstacles.push_back({0.f, hz + 0.85f, 1.25f});
             for (int k = -4; k <= 4; ++k)
                 box(G.wood, {k * 0.24f, hy + 0.42f, hz}, {0.04f, 0.03f, 1.45f}, glm::vec3(0.05f), MAT_PLAIN);
         }
         // capstan
         float cz = 0.20f * L, cy = H.deckHeight(cz);
+        G.outline.obstacles.push_back({0.f, cz, 0.8f});   // capstan + bars
         cylinder(G.wood, {0, cy, cz}, {0, cy + 1.0f, cz}, 0.55f, 0.45f, 12, woodC, MAT_WOOD, true);
         for (int k = 0; k < 6; ++k) {
             float a = 2 * PI * k / 6;
@@ -480,12 +486,14 @@ GalleonGeometry buildGalleonGeometry(const GalleonParams& P) {
                 cylinder(G.wood, {bx, by + 0.72f, bz}, {bx, by + 0.78f, bz}, 0.375f, 0.375f, 12, iron, MAT_PLAIN);
             }
         box(G.wood, {-2.0f, H.deckHeight(0.05f * L) + 0.35f, 0.05f * L}, {0.5f, 0.35f, 0.6f}, darkWood, MAT_WOOD);
+        G.outline.obstacles.push_back({-2.0f, 0.05f * L, 0.85f});
         // deck guns on carriages aimed through the bulwarks
         for (int side = -1; side <= 1; side += 2)
             for (int k = 0; k < 3; ++k) {
                 float gz = -0.05f * L + k * 3.5f;
                 float gx = side * (G.outline.halfBeam(gz) - 0.9f), gy = H.deckHeight(gz);
                 box(G.wood, {gx, gy + 0.25f, gz}, {0.5f, 0.25f, 0.4f}, darkWood, MAT_WOOD);
+                G.outline.obstacles.push_back({gx, gz, 0.75f});
                 cylinder(G.wood, {gx - side * 0.5f, gy + 0.6f, gz}, {gx + side * 1.3f, gy + 0.65f, gz}, 0.22f, 0.15f,
                          10, iron, MAT_PLAIN);
             }
@@ -493,7 +501,7 @@ GalleonGeometry buildGalleonGeometry(const GalleonParams& P) {
 
     // ---- Lanterns (emissive cages; also become point lights) ----
     auto lantern = [&](glm::vec3 p) {
-        box(G.wood, p, {0.18f, 0.25f, 0.18f}, glm::vec3(5.0f, 2.6f, 0.9f), MAT_EMISSIVE);
+        box(G.wood, p, {0.18f, 0.25f, 0.18f}, glm::vec3(2.8f, 1.4f, 0.5f), MAT_EMISSIVE);
         box(G.wood, p + glm::vec3(0, 0.3f, 0), {0.22f, 0.05f, 0.22f}, iron, MAT_PLAIN);
         G.lanternLocal.push_back(p);
     };

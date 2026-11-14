@@ -28,6 +28,7 @@ struct HullProfile {
 struct DeckOutline {
     HullProfile hull;
     float zMin, zMax;
+    std::vector<glm::vec3> obstacles;  // solid things on deck as circles: (x, z, radius), ship-local
     float halfBeam(float z) const;     // walkable half-width (inside bulwark)
     float deckHeight(float z) const { return hull.deckHeight(z); }
 };

@@ -94,6 +94,32 @@ TEST(clamp_handles_tapered_bow) {
     }
 }
 
+TEST(obstacle_pushes_out_of_mast) {
+    DeckOutline o = testOutline();
+    CHECK(o.obstacles.size() >= 6);  // 3 masts + capstan + hatches + guns...
+    for (const glm::vec3& ob : o.obstacles) {
+        // standing exactly in the middle of an obstacle must end up outside it
+        glm::vec2 r = resolveObstacles({ob.x, ob.y}, o);
+        CHECK(glm::length(r - glm::vec2(ob.x, ob.y)) >= ob.z - 1e-3f);
+    }
+}
+TEST(obstacle_leaves_free_deck_alone) {
+    DeckOutline o = testOutline();
+    glm::vec2 p(1.5f, -2.0f);  // open deck between the main mast, the hatch and the starboard guns
+    for (const glm::vec3& ob : o.obstacles) CHECK(glm::length(p - glm::vec2(ob.x, ob.y)) > ob.z + 0.3f);
+    glm::vec2 r = resolveObstacles(p, o);
+    CHECK(glm::length(r - p) < 1e-5f);
+}
+TEST(obstacle_result_stays_on_deck) {
+    DeckOutline o = testOutline();
+    for (const glm::vec3& ob : o.obstacles) {
+        glm::vec2 r = resolveObstacles(clampToDeck({ob.x, ob.y}, o), o);
+        r = clampToDeck(r, o);
+        CHECK(std::fabs(r.x) <= o.halfBeam(r.y) + 1e-3f);
+        CHECK(r.y >= o.zMin && r.y <= o.zMax);
+    }
+}
+
 // ---------------- Galleon ----------------
 static bool validMesh(const MeshData& m, int stride) {
     if (m.idx.empty() || m.idx.size() % stride) return false;

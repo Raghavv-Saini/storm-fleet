@@ -40,6 +40,20 @@ glm::vec2 clampToDeck(glm::vec2 local, const DeckOutline& o, float margin) {
     return r;
 }
 
+glm::vec2 resolveObstacles(glm::vec2 p, const DeckOutline& o) {
+    for (int pass = 0; pass < 3; ++pass) {  // a few passes so neighbouring obstacles don't re-trap us
+        for (const glm::vec3& ob : o.obstacles) {
+            glm::vec2 d = p - glm::vec2(ob.x, ob.y);
+            float len = glm::length(d);
+            if (len >= ob.z) continue;
+            // exactly at the centre: escape sideways (toward the nearer rail) so the result is deterministic
+            glm::vec2 dir = len > 1e-4f ? d / len : glm::vec2(p.x >= 0.f ? 1.f : -1.f, 0.f);
+            p = glm::vec2(ob.x, ob.y) + dir * ob.z;
+        }
+    }
+    return p;
+}
+
 glm::vec3 DeckCamera::eyeLocal(const DeckOutline& o) const {
     float bobY = 0.04f * std::sin(bob * 2.f);
     return glm::vec3(local.x, o.deckHeight(local.y) + 1.7f + bobY, local.y);
@@ -65,5 +79,6 @@ void DeckCamera::update(const InputState& in, float dt, const DeckOutline& o) {
         local += glm::normalize(v) * speed * dt;
         bob += dt * speed * 2.2f;
     }
+    local = resolveObstacles(clampToDeck(local, o), o);
     local = clampToDeck(local, o);
 }

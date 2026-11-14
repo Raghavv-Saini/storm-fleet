@@ -49,6 +49,7 @@ struct Args {
     glm::vec2 deckPos{0.f};
     float deckYaw = 0.f, deckPitch = 0.f;
     bool noAudio = false;
+    float bench = 0.f;   // >0: run the live loop for N seconds, print fps, exit
     int w = 1600, h = 900;
     float exposure = 1.7f;
 };
@@ -141,7 +142,11 @@ void Game::initWorld() {
     fly.yaw = 0.22f;
     fly.pitch = -0.04f;
     if (args.hasCam) { fly.pos = args.camPos; fly.yaw = args.camYaw; fly.pitch = args.camPitch; }
-    if (args.hasDeck) { deck.local = args.deckPos; deck.yaw = args.deckYaw; deck.pitch = args.deckPitch; }
+    if (args.hasDeck) {
+        deck.local = args.deckPos; deck.yaw = args.deckYaw; deck.pitch = args.deckPitch;
+        const DeckOutline& o = fleet[0].mesh.outline;
+        deck.local = clampToDeck(resolveObstacles(clampToDeck(deck.local, o), o), o);
+    }
     scene = args.scene;
     // positions/poses for t = 0
     step(0.f);
@@ -387,6 +392,7 @@ bool parseArgs(int argc, char** argv, Args& a) {
         else if (s == "--size" && i + 2 < argc) { a.w = std::atoi(argv[i + 1]); a.h = std::atoi(argv[i + 2]); i += 2; }
         else if (s == "--exposure" && i + 1 < argc) a.exposure = (float)std::atof(argv[++i]);
         else if (s == "--noaudio") a.noAudio = true;
+        else if (s == "--bench" && i + 1 < argc) a.bench = (float)std::atof(argv[++i]);
         else { std::fprintf(stderr, "unknown or incomplete argument: %s\n", s.c_str()); return false; }
     }
     return true;
@@ -471,12 +477,19 @@ int main(int argc, char** argv) {
             glfwGetFramebufferSize(win, &fw, &fh);
             game.renderer.resize(fw, fh);
 
-            double last = glfwGetTime(), titleTimer = 0.0;
-            int frames = 0;
+            double last = glfwGetTime(), titleTimer = 0.0, startT = last, worst = 0.0;
+            int frames = 0, totalFrames = 0;
             while (!glfwWindowShouldClose(win)) {
                 double now = glfwGetTime();
                 float dt = (float)std::min(now - last, 0.1);
+                if (totalFrames > 5) worst = std::max(worst, now - last);
                 last = now;
+                if (args.bench > 0.f) {
+                    // scripted flight: sweep the camera so the benchmark exercises the whole scene
+                    game.in.w = true;
+                    game.in.mouseDx = 2.0f * std::sin((float)(now - startT) * 0.6f);
+                    if (now - startT > args.bench) { std::printf("bench: %d frames in %.1fs = %.1f fps avg, worst frame %.1f ms\n", totalFrames, now - startT, totalFrames / (now - startT), worst * 1000.0); break; }
+                }
                 glfwPollEvents();
 
                 // fixed small steps keep particle and wave logic stable at any frame rate
@@ -490,9 +503,10 @@ int main(int argc, char** argv) {
                 glm::vec3 camPos;
                 glm::mat4 view = currentView(game, camPos);
                 game.render(view, camPos, 0);
+                if (args.bench > 0.f) glFinish();   // measure real GPU time, not just queued commands
                 glfwSwapBuffers(win);
 
-                ++frames;
+                ++frames; ++totalFrames;
                 titleTimer += dt;
                 if (titleTimer >= 0.5) {
                     char title[256];

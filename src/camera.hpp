@@ -18,6 +18,8 @@ struct FlyCamera {
 };
 
 glm::vec2 clampToDeck(glm::vec2 local, const DeckOutline& o, float margin = 0.4f);
+// Pushes a deck position out of masts, capstan, guns, hatches... (circles in o.obstacles).
+glm::vec2 resolveObstacles(glm::vec2 local, const DeckOutline& o);
 
 struct DeckCamera {
     glm::vec2 local{0.f, -4.f};  // (x, z) on the deck in ship-local space
